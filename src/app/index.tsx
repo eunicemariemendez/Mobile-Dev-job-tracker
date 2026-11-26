@@ -1,98 +1,93 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from "expo-router";
+import { useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import ApplicationCard from "../components/ApplicationCard";
+import FilterBar, { Filter } from "../components/FilterBar";
+import SummaryBar from "../components/SummaryBar";
+import { useApplications } from "../context/ApplicationsContext";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const ApplicationsList = () => {
+  const { applications } = useApplications();
+  const [filter, setFilter] = useState<Filter>("All");
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+  const sorted = [...applications].sort(
+    (a, b) =>
+      b.dateApplied.localeCompare(a.dateApplied) || Number(b.id) - Number(a.id),
   );
-}
+  const shown =
+    filter === "All" ? sorted : sorted.filter((item) => item.status === filter);
 
-export default function HomeScreen() {
+  const emptyMessage =
+    applications.length === 0
+      ? 'Tap "Add Application" above to record the first job you\'ve applied for.'
+      : `None of your applications are at ${filter} right now.
+  Choose All to see every Application.`;
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <FlatList
+      style={styles.screen}
+      contentContainerStyle={styles.list}
+      data={shown}
+      keyExtractor={(item) => item.id}
+      ItemSeparatorComponent={() => <View style={styles.gap} />}
+      ListHeaderComponent={
+        <View style={styles.header}>
+          <SummaryBar applications={applications} />
+          <FilterBar value={filter} onChange={setFilter} />
+          <Pressable
+            style={styles.addButton}
+            onPress={() => router.push("/new")}
+          >
+            <Text style={styles.addText}>Add Application</Text>
+          </Pressable>
+        </View>
+      }
+      ListEmptyComponent={<Text style={styles.empty}>{emptyMessage}</Text>}
+      renderItem={({ item }) => (
+        <ApplicationCard
+          application={item}
+          onPress={() =>
+            router.push({ pathname: "/edit/[id]", params: { id: item.id } })
+          }
+        />
+      )}
+    />
   );
-}
+};
+
+export default ApplicationsList;
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: "#F8FAFC",
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  list: {
+    padding: 16,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  header: {
+    gap: 14,
+    marginBottom: 14,
   },
-  title: {
-    textAlign: 'center',
+  gap: {
+    height: 10,
   },
-  code: {
-    textTransform: 'uppercase',
+  addButton: {
+    backgroundColor: "#5E7A52",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  addText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  empty: {
+    fontSize: 15,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 21,
+    paddingVertical: 32,
   },
 });
